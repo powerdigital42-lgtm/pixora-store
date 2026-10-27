@@ -1,0 +1,2 @@
+# pixora-store
+PIXORA — YOUR DIGITAL WORLD
