@@ -1,5 +1,5 @@
 
-/* PIXORA — Live products from Supabase */
+/* PIXORA — Live products + Order creation */
 
 const SUPABASE_URL = "https://wgaqjdellsvkseqdrlco.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_ehhXQXJnuyFc5gy5tcWqcg_l-2lVjUX";
@@ -16,9 +16,14 @@ const dialog = document.querySelector("#dialog");
 const grid = document.querySelector(".grid");
 const status = document.querySelector(".warning");
 
+const emailInput = document.querySelector("#customer-email");
+const buyButton = document.querySelector("#buy");
+const orderStatus = document.querySelector("#order-status");
+
 let language = "en";
 let products = [];
 let activeFilter = "all";
+let activeProduct = null;
 
 const categories = {
   files: { en: "Digital files", ar: "ملفات رقمية" },
@@ -28,13 +33,14 @@ const categories = {
 
 function setLanguage(next) {
   language = next;
+
   document.documentElement.lang = next;
   document.documentElement.dir = next === "ar" ? "rtl" : "ltr";
 
   langButton.textContent = next === "ar" ? "English" : "العربية";
 
   document.querySelectorAll("[data-en][data-ar]").forEach(el => {
-    el.innerHTML = el.dataset[next];
+    el.textContent = el.dataset[next];
   });
 
   renderProducts();
@@ -46,8 +52,10 @@ langButton.addEventListener("click", () => {
 
 function makeElement(tag, className, text) {
   const el = document.createElement(tag);
+
   if (className) el.className = className;
   if (text !== undefined) el.textContent = text;
+
   return el;
 }
 
@@ -70,6 +78,8 @@ function formatPrice(product) {
 }
 
 function showDetails(product) {
+  activeProduct = product;
+
   document.querySelector("#dialog-title").textContent =
     language === "ar"
       ? (product.title_ar || product.title_en)
@@ -79,6 +89,13 @@ function showDetails(product) {
     language === "ar"
       ? (product.description_ar || product.description_en || "")
       : (product.description_en || product.description_ar || "");
+
+  emailInput.value = "";
+  orderStatus.textContent = "";
+  buyButton.disabled = false;
+
+  buyButton.textContent =
+    language === "ar" ? "إنشاء طلب الشراء" : "Create order";
 
   dialog.showModal();
 }
@@ -92,7 +109,9 @@ function renderProducts() {
 
     const visual = makeElement(
       "div",
-      "visual " + (categories[product.category] ? product.category : "files")
+      "visual " + (
+        categories[product.category] ? product.category : "files"
+      )
     );
 
     visual.appendChild(
@@ -106,11 +125,14 @@ function renderProducts() {
 
       if (imageUrl) {
         const image = makeElement("img");
+
         image.src = imageUrl;
         image.alt = product.title_en || "PIXORA product";
         image.loading = "lazy";
+
         image.style.cssText =
           "width:100%;height:100%;object-fit:cover;position:absolute;inset:0;";
+
         visual.appendChild(image);
       }
     }
@@ -168,6 +190,7 @@ function renderProducts() {
     details.addEventListener("click", () => showDetails(product));
 
     body.appendChild(details);
+
     card.append(visual, body);
     grid.appendChild(card);
   });
@@ -191,6 +214,7 @@ document.querySelectorAll(".filters button").forEach(button => {
 
     button.classList.add("active");
     activeFilter = button.dataset.filter;
+
     applyFilter();
   });
 });
@@ -235,6 +259,74 @@ async function loadProducts() {
   }
 }
 
+/* Create customer order */
+
+buyButton.addEventListener("click", async () => {
+  if (!activeProduct) return;
+
+  const email = emailInput.value.trim();
+
+  if (!emailInput.checkValidity() || !email) {
+    emailInput.reportValidity();
+
+    orderStatus.textContent =
+      language === "ar"
+        ? "يرجى إدخال بريد إلكتروني صحيح."
+        : "Please enter a valid email address.";
+
+    return;
+  }
+
+  buyButton.disabled = true;
+
+  buyButton.textContent =
+    language === "ar" ? "جارٍ إنشاء الطلب..." : "Creating order...";
+
+  orderStatus.textContent =
+    language === "ar"
+      ? "يرجى الانتظار..."
+      : "Please wait...";
+
+  try {
+    const { data, error } = await db.functions.invoke(
+      "create-order",
+      {
+        body: {
+          product_id: activeProduct.id,
+          customer_email: email
+        }
+      }
+    );
+
+    if (error) throw error;
+
+    console.log("PIXORA order response:", data);
+
+    orderStatus.textContent =
+      language === "ar"
+        ? "تم إنشاء طلبك بنجاح. الدفع غير مفعّل حاليًا، وسيبقى الطلب في انتظار الدفع."
+        : "Your order was created successfully. Payment is not enabled yet, so your order will remain pending.";
+
+    buyButton.textContent =
+      language === "ar" ? "تم إنشاء الطلب" : "Order created";
+
+  } catch (error) {
+    console.error("PIXORA order error:", error);
+
+    orderStatus.textContent =
+      language === "ar"
+        ? "تعذر إنشاء الطلب. يرجى المحاولة لاحقًا."
+        : "Unable to create the order. Please try again later.";
+
+    buyButton.disabled = false;
+
+    buyButton.textContent =
+      language === "ar" ? "إعادة المحاولة" : "Try again";
+  }
+});
+
+/* Dialog controls */
+
 document.querySelector("#close").addEventListener("click", () => {
   dialog.close();
 });
@@ -247,12 +339,18 @@ dialog.addEventListener("click", event => {
   if (event.target === dialog) dialog.close();
 });
 
+/* Mobile navigation */
+
 menuButton.addEventListener("click", () => {
   nav.classList.toggle("open");
 });
 
 nav.querySelectorAll("a").forEach(link => {
-  link.addEventListener("click", () => nav.classList.remove("open"));
+  link.addEventListener("click", () => {
+    nav.classList.remove("open");
+  });
 });
+
+/* Start */
 
 loadProducts();
