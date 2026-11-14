@@ -211,7 +211,105 @@ async function deleteProduct(p) {
   await loadProducts();
 }
 
-(async function init() {
+
+/* PIXORA — Customer Orders */
+
+function orderStatusLabel(status) {
+  const labels = {
+    pending: "قيد الانتظار",
+    paid: "مدفوع",
+    failed: "فشل الدفع",
+    refunded: "مسترد"
+  };
+
+  return labels[status] || status;
+}
+
+async function loadOrders() {
+  const list = $("ordersList");
+  const summary = $("ordersSummary");
+
+  list.textContent = "جارٍ تحميل الطلبات...";
+  summary.textContent = "جارٍ حساب الإحصائيات...";
+
+  const { data, error } = await db
+    .from("orders")
+    .select(
+      "id, product_id, product_title, customer_email, amount, currency, status, created_at"
+    )
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    list.textContent = "تعذر تحميل الطلبات: " + error.message;
+    summary.textContent = "تعذر تحميل الإحصائيات.";
+    return;
+  }
+
+  const orders = data || [];
+
+  const pending = orders.filter(o => o.status === "pending").length;
+  const paid = orders.filter(o => o.status === "paid").length;
+  const failed = orders.filter(o => o.status === "failed").length;
+  const refunded = orders.filter(o => o.status === "refunded").length;
+
+  summary.textContent =
+    `إجمالي الطلبات: ${orders.length} — ` +
+    `قيد الانتظار: ${pending} — ` +
+    `مدفوع: ${paid} — ` +
+    `فشل: ${failed} — ` +
+    `مسترد: ${refunded}`;
+
+  list.replaceChildren();
+
+  if (!orders.length) {
+    list.textContent = "لا توجد طلبات حتى الآن.";
+    return;
+  }
+
+  orders.forEach(order => {
+    const card = document.createElement("article");
+    card.className = "product";
+
+    const info = document.createElement("div");
+
+    const title = document.createElement("strong");
+    title.textContent = order.product_title || "منتج PIXORA";
+
+    const email = document.createElement("div");
+    email.className = "muted";
+    email.textContent = "البريد الإلكتروني: " + order.customer_email;
+
+    const price = document.createElement("div");
+    price.className = "muted";
+    price.textContent =
+      "المبلغ: " + order.amount + " " + order.currency;
+
+    const date = document.createElement("div");
+    date.className = "muted";
+
+    const parsedDate = new Date(order.created_at);
+    date.textContent = "التاريخ: " +
+      (Number.isNaN(parsedDate.getTime())
+        ? "غير متاح"
+        : parsedDate.toLocaleString("ar-DZ"));
+
+    const status = document.createElement("div");
+    status.className = "tag";
+    status.textContent = "الحالة: " + orderStatusLabel(order.status);
+
+    info.append(title, email, price, date, status);
+
+    card.appendChild(info);
+    list.appendChild(card);
+  });
+}
+
+const refreshOrdersBtn = $("refreshOrdersBtn");
+
+if (refreshOrdersBtn) {
+  refreshOrdersBtn.addEventListener("click", loadOrders);
+}
+
   const { data, error } = await db.auth.getSession();
   if (error) return message($("loginMsg"), error.message, true);
   if (data.session?.user) {
