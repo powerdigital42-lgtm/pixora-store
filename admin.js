@@ -1,10 +1,14 @@
 
-/* PIXORA Admin — Supabase client-side public key only.
-   Never add a service_role key here.
-*/
+/* =====================================================
+   PIXORA ADMIN
+   Supabase publishable key only.
+   NEVER put service_role key in this file.
+===================================================== */
 
 const SUPABASE_URL = "https://wgaqjdellsvkseqdrlco.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_ehhXQXJnuyFc5gy5tcWqcg_l-2lVjUX";
+
+const SUPABASE_PUBLISHABLE_KEY =
+  "sb_publishable_ehhXQXJnuyFc5gy5tcWqcg_l-2lVjUX";
 
 const db = window.supabase.createClient(
   SUPABASE_URL,
@@ -21,14 +25,14 @@ let currentUser = null;
 let currentProduct = null;
 
 
-/* =========================
+/* =====================================================
    GENERAL HELPERS
-========================= */
+===================================================== */
 
 function message(target, text, error = false) {
   if (!target) return;
 
-  target.innerHTML = "";
+  target.replaceChildren();
 
   if (!text) return;
 
@@ -39,14 +43,15 @@ function message(target, text, error = false) {
   target.appendChild(el);
 }
 
-function safeText(value) {
-  return String(value ?? "");
+function showError(text) {
+  console.error("PIXORA:", text);
+  alert(text);
 }
 
 
-/* =========================
+/* =====================================================
    ADMIN AUTHENTICATION
-========================= */
+===================================================== */
 
 async function checkAdmin(user) {
   const { data, error } = await db
@@ -59,7 +64,7 @@ async function checkAdmin(user) {
 
   if (!data) {
     throw new Error(
-      "هذا الحساب ليس لديه صلاحية مسؤول. تحقق من إضافة user_id في جدول admin_users."
+      "هذا الحساب ليس لديه صلاحية مسؤول. تحقق من جدول admin_users."
     );
   }
 }
@@ -86,47 +91,100 @@ function showLogin() {
 }
 
 
-/* LOGIN */
+/* =====================================================
+   LOGIN
+===================================================== */
 
-$("loginForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
+const loginForm = $("loginForm");
 
-  message($("loginMsg"), "جارٍ تسجيل الدخول...");
+if (loginForm) {
+  loginForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-  const { data, error } = await db.auth.signInWithPassword({
-    email: $("email").value.trim(),
-    password: $("password").value
+    const loginMsg = $("loginMsg");
+    const submitButton = loginForm.querySelector(
+      'button[type="submit"]'
+    );
+
+    if (submitButton) submitButton.disabled = true;
+
+    message(loginMsg, "جارٍ تسجيل الدخول...");
+
+    try {
+      const email = $("email").value.trim();
+      const password = $("password").value;
+
+      if (!email || !password) {
+        throw new Error("أدخل البريد الإلكتروني وكلمة المرور.");
+      }
+
+      const { data, error } = await db.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+
+      if (!data.user) {
+        throw new Error("لم يتم العثور على بيانات الحساب.");
+      }
+
+      await showDashboard(data.user);
+
+      message(loginMsg, "");
+
+    } catch (err) {
+      console.error("Login error:", err);
+
+      try {
+        await db.auth.signOut();
+      } catch (signOutError) {
+        console.error(signOutError);
+      }
+
+      showLogin();
+
+      message(
+        loginMsg,
+        err.message || "حدث خطأ أثناء تسجيل الدخول.",
+        true
+      );
+
+    } finally {
+      if (submitButton) submitButton.disabled = false;
+    }
   });
-
-  if (error) {
-    return message($("loginMsg"), error.message, true);
-  }
-
-  try {
-    await showDashboard(data.user);
-    message($("loginMsg"), "");
-  } catch (err) {
-    await db.auth.signOut();
-    showLogin();
-    message($("loginMsg"), err.message, true);
-  }
-});
+}
 
 
-/* LOGOUT */
+/* =====================================================
+   LOGOUT
+===================================================== */
 
-logoutBtn.addEventListener("click", async () => {
-  await db.auth.signOut();
-  showLogin();
-});
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", async () => {
+    try {
+      const { error } = await db.auth.signOut();
+
+      if (error) throw error;
+
+      showLogin();
+
+    } catch (err) {
+      showError("تعذر تسجيل الخروج: " + err.message);
+    }
+  });
+}
 
 
-/* =========================
-   PRODUCT FORM
-========================= */
+/* =====================================================
+   PRODUCT FORM RESET
+===================================================== */
 
 function resetForm() {
-  $("productForm").reset();
+  const form = $("productForm");
+
+  if (form) form.reset();
 
   $("productId").value = "";
   $("price").value = "0";
@@ -143,15 +201,23 @@ function resetForm() {
   message($("formMsg"), "");
 }
 
-$("cancelEditBtn").addEventListener("click", resetForm);
+const cancelEditBtn = $("cancelEditBtn");
+
+if (cancelEditBtn) {
+  cancelEditBtn.addEventListener("click", resetForm);
+}
 
 
-/* =========================
+/* =====================================================
    FILE UPLOAD
-========================= */
+===================================================== */
 
 async function uploadFile(bucket, file, folder) {
   if (!file) return null;
+
+  if (!currentUser) {
+    throw new Error("يجب تسجيل الدخول أولاً.");
+  }
 
   const ext = file.name.split(".").pop().toLowerCase();
 
@@ -172,113 +238,128 @@ async function uploadFile(bucket, file, folder) {
 }
 
 
-/* =========================
+/* =====================================================
    SAVE PRODUCT
-========================= */
+===================================================== */
 
-$("productForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
+const productForm = $("productForm");
 
-  if (!currentUser) return;
+if (productForm) {
+  productForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-  const saveBtn = $("saveBtn");
-
-  saveBtn.disabled = true;
-
-  message($("formMsg"), "جارٍ حفظ المنتج ورفع الملفات...");
-
-  try {
-    const image = $("imageFile").files[0] || null;
-    const pdf = $("pdfFile").files[0] || null;
-
-    if (
-      image &&
-      !["image/png", "image/jpeg", "image/webp"].includes(image.type)
-    ) {
-      throw new Error("صيغة صورة الغلاف غير مدعومة.");
+    if (!currentUser) {
+      return message(
+        $("formMsg"),
+        "يجب تسجيل الدخول أولاً.",
+        true
+      );
     }
 
-    if (pdf && pdf.type !== "application/pdf") {
-      throw new Error("يجب اختيار ملف PDF.");
+    const saveBtn = $("saveBtn");
+    saveBtn.disabled = true;
+
+    message($("formMsg"), "جارٍ حفظ المنتج ورفع الملفات...");
+
+    try {
+      const image = $("imageFile").files[0] || null;
+      const pdf = $("pdfFile").files[0] || null;
+
+      if (
+        image &&
+        !["image/png", "image/jpeg", "image/webp"].includes(image.type)
+      ) {
+        throw new Error("صيغة صورة الغلاف غير مدعومة.");
+      }
+
+      if (pdf && pdf.type !== "application/pdf") {
+        throw new Error("يجب اختيار ملف PDF.");
+      }
+
+      if (image && image.size > 8 * 1024 * 1024) {
+        throw new Error("حجم صورة الغلاف يجب ألا يتجاوز 8 MB.");
+      }
+
+      if (pdf && pdf.size > 50 * 1024 * 1024) {
+        throw new Error("حجم ملف PDF يجب ألا يتجاوز 50 MB.");
+      }
+
+      const imagePath = image
+        ? await uploadFile("pixora-images", image, "covers")
+        : (currentProduct?.image_path || null);
+
+      const filePath = pdf
+        ? await uploadFile("pixora-files", pdf, "products")
+        : (currentProduct?.file_path || null);
+
+      const payload = {
+        title_en: $("title_en").value.trim(),
+        title_ar: $("title_ar").value.trim(),
+        description_en: $("description_en").value.trim(),
+        description_ar: $("description_ar").value.trim(),
+        category: $("category").value,
+        price: Number($("price").value),
+        currency: $("currency").value,
+        image_path: imagePath,
+        file_path: filePath,
+        is_published: $("is_published").value === "true"
+      };
+
+      if (!payload.title_en || !payload.title_ar) {
+        throw new Error("أدخل اسم المنتج باللغتين.");
+      }
+
+      if (!Number.isFinite(payload.price) || payload.price < 0) {
+        throw new Error("تحقق من السعر.");
+      }
+
+      let result;
+
+      const productId = $("productId").value;
+
+      if (productId) {
+        result = await db
+          .from("products")
+          .update(payload)
+          .eq("id", productId)
+          .select()
+          .single();
+
+      } else {
+        result = await db
+          .from("products")
+          .insert(payload)
+          .select()
+          .single();
+      }
+
+      if (result.error) throw result.error;
+
+      resetForm();
+
+      message($("formMsg"), "تم حفظ المنتج بنجاح.");
+
+      await loadProducts();
+
+    } catch (err) {
+      console.error("Save product error:", err);
+
+      message(
+        $("formMsg"),
+        err.message || "حدث خطأ أثناء حفظ المنتج.",
+        true
+      );
+
+    } finally {
+      saveBtn.disabled = false;
     }
-
-    if (image && image.size > 8 * 1024 * 1024) {
-      throw new Error("حجم صورة الغلاف يجب ألا يتجاوز 8 MB.");
-    }
-
-    if (pdf && pdf.size > 50 * 1024 * 1024) {
-      throw new Error("حجم ملف PDF يجب ألا يتجاوز 50 MB.");
-    }
-
-    const imagePath = image
-      ? await uploadFile("pixora-images", image, "covers")
-      : (currentProduct?.image_path || null);
-
-    const filePath = pdf
-      ? await uploadFile("pixora-files", pdf, "products")
-      : (currentProduct?.file_path || null);
-
-    const payload = {
-      title_en: $("title_en").value.trim(),
-      title_ar: $("title_ar").value.trim(),
-      description_en: $("description_en").value.trim(),
-      description_ar: $("description_ar").value.trim(),
-      category: $("category").value,
-      price: Number($("price").value),
-      currency: $("currency").value,
-      image_path: imagePath,
-      file_path: filePath,
-      is_published: $("is_published").value === "true"
-    };
-
-    if (!payload.title_en || !payload.title_ar) {
-      throw new Error("أدخل اسم المنتج باللغتين.");
-    }
-
-    if (!Number.isFinite(payload.price) || payload.price < 0) {
-      throw new Error("تحقق من السعر.");
-    }
-
-    let result;
-
-    if ($("productId").value) {
-      result = await db
-        .from("products")
-        .update(payload)
-        .eq("id", $("productId").value)
-        .select()
-        .single();
-    } else {
-      result = await db
-        .from("products")
-        .insert(payload)
-        .select()
-        .single();
-    }
-
-    if (result.error) throw result.error;
-
-    resetForm();
-
-    message($("formMsg"), "تم حفظ المنتج بنجاح.");
-
-    await loadProducts();
-
-  } catch (err) {
-    message(
-      $("formMsg"),
-      err.message || "حدث خطأ أثناء الحفظ.",
-      true
-    );
-  } finally {
-    saveBtn.disabled = false;
-  }
-});
+  });
+}
 
 
-/* =========================
-   PRODUCT CARDS
-========================= */
+/* =====================================================
+   PRODUCT CARD
+===================================================== */
 
 function addProductCard(product) {
   const card = document.createElement("article");
@@ -293,15 +374,15 @@ function addProductCard(product) {
     product.title_en ||
     "منتج بدون اسم";
 
+  const english = document.createElement("small");
+  english.textContent = product.title_en || "";
+
   const meta = document.createElement("div");
   meta.className = "muted";
 
   meta.textContent =
     `${product.price} ${product.currency} · ` +
     `${product.is_published ? "منشور" : "مسودة"}`;
-
-  const english = document.createElement("small");
-  english.textContent = product.title_en || "";
 
   info.append(
     title,
@@ -324,7 +405,9 @@ function addProductCard(product) {
 
   const toggle = document.createElement("button");
   toggle.className = "secondary";
-  toggle.textContent = product.is_published ? "إخفاء" : "نشر";
+
+  toggle.textContent =
+    product.is_published ? "إخفاء" : "نشر";
 
   toggle.addEventListener("click", () => {
     togglePublished(product);
@@ -346,41 +429,48 @@ function addProductCard(product) {
 }
 
 
-/* =========================
+/* =====================================================
    LOAD PRODUCTS
-========================= */
+===================================================== */
 
 async function loadProducts() {
   const productsList = $("productsList");
 
+  if (!productsList) return;
+
   productsList.textContent = "جارٍ تحميل المنتجات...";
 
-  const { data, error } = await db
-    .from("products")
-    .select("*")
-    .order("created_at", { ascending: false });
+  try {
+    const { data, error } = await db
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-  if (error) {
+    if (error) throw error;
+
+    productsList.replaceChildren();
+
+    if (!data || data.length === 0) {
+      productsList.textContent =
+        "لا توجد منتجات بعد. أضف أول منتج من النموذج أعلاه.";
+
+      return;
+    }
+
+    data.forEach(addProductCard);
+
+  } catch (err) {
+    console.error("Load products error:", err);
+
     productsList.textContent =
-      "تعذر تحميل المنتجات: " + error.message;
-    return;
+      "تعذر تحميل المنتجات: " + err.message;
   }
-
-  productsList.replaceChildren();
-
-  if (!data || !data.length) {
-    productsList.textContent =
-      "لا توجد منتجات بعد. أضف أول منتج من النموذج أعلاه.";
-    return;
-  }
-
-  data.forEach(addProductCard);
 }
 
 
-/* =========================
+/* =====================================================
    EDIT PRODUCT
-========================= */
+===================================================== */
 
 function editProduct(p) {
   currentProduct = p;
@@ -395,8 +485,8 @@ function editProduct(p) {
     "category",
     "price",
     "currency"
-  ].forEach((k) => {
-    $(k).value = p[k] ?? "";
+  ].forEach((key) => {
+    $(key).value = p[key] ?? "";
   });
 
   $("is_published").value = String(!!p.is_published);
@@ -421,31 +511,32 @@ function editProduct(p) {
 }
 
 
-/* =========================
+/* =====================================================
    PUBLISH / HIDE PRODUCT
-========================= */
+===================================================== */
 
 async function togglePublished(p) {
-  const { error } = await db
-    .from("products")
-    .update({
-      is_published: !p.is_published
-    })
-    .eq("id", p.id);
+  try {
+    const { error } = await db
+      .from("products")
+      .update({
+        is_published: !p.is_published
+      })
+      .eq("id", p.id);
 
-  if (error) {
-    return alert(
-      "تعذر تحديث حالة المنتج: " + error.message
-    );
+    if (error) throw error;
+
+    await loadProducts();
+
+  } catch (err) {
+    showError("تعذر تحديث حالة المنتج: " + err.message);
   }
-
-  await loadProducts();
 }
 
 
-/* =========================
+/* =====================================================
    DELETE PRODUCT
-========================= */
+===================================================== */
 
 async function deleteProduct(p) {
   const confirmed = confirm(
@@ -454,24 +545,25 @@ async function deleteProduct(p) {
 
   if (!confirmed) return;
 
-  const { error } = await db
-    .from("products")
-    .delete()
-    .eq("id", p.id);
+  try {
+    const { error } = await db
+      .from("products")
+      .delete()
+      .eq("id", p.id);
 
-  if (error) {
-    return alert(
-      "تعذر حذف المنتج: " + error.message
-    );
+    if (error) throw error;
+
+    await loadProducts();
+
+  } catch (err) {
+    showError("تعذر حذف المنتج: " + err.message);
   }
-
-  await loadProducts();
 }
 
 
-/* =========================
+/* =====================================================
    CUSTOMER ORDERS
-========================= */
+===================================================== */
 
 function orderStatusLabel(status) {
   const labels = {
@@ -494,108 +586,113 @@ async function loadOrders() {
   list.textContent = "جارٍ تحميل الطلبات...";
   summary.textContent = "جارٍ حساب الإحصائيات...";
 
-  const { data, error } = await db
-    .from("orders")
-    .select(
-      "id, product_id, product_title, customer_email, amount, currency, status, created_at"
-    )
-    .order("created_at", { ascending: false });
+  try {
+    const { data, error } = await db
+      .from("orders")
+      .select(
+        "id, product_id, product_title, customer_email, amount, currency, status, created_at"
+      )
+      .order("created_at", { ascending: false });
 
-  if (error) {
+    if (error) throw error;
+
+    const orders = data || [];
+
+    const pending = orders.filter(
+      (o) => o.status === "pending"
+    ).length;
+
+    const paid = orders.filter(
+      (o) => o.status === "paid"
+    ).length;
+
+    const failed = orders.filter(
+      (o) => o.status === "failed"
+    ).length;
+
+    const refunded = orders.filter(
+      (o) => o.status === "refunded"
+    ).length;
+
+    summary.textContent =
+      `إجمالي الطلبات: ${orders.length} — ` +
+      `قيد الانتظار: ${pending} — ` +
+      `مدفوع: ${paid} — ` +
+      `فشل: ${failed} — ` +
+      `مسترد: ${refunded}`;
+
+    list.replaceChildren();
+
+    if (orders.length === 0) {
+      list.textContent = "لا توجد طلبات حتى الآن.";
+      return;
+    }
+
+    orders.forEach((order) => {
+      const card = document.createElement("article");
+      card.className = "product";
+
+      const info = document.createElement("div");
+
+      const title = document.createElement("strong");
+      title.textContent =
+        order.product_title || "منتج PIXORA";
+
+      const email = document.createElement("div");
+      email.className = "muted";
+      email.textContent =
+        "البريد الإلكتروني: " + order.customer_email;
+
+      const price = document.createElement("div");
+      price.className = "muted";
+      price.textContent =
+        "المبلغ: " + order.amount + " " + order.currency;
+
+      const date = document.createElement("div");
+      date.className = "muted";
+
+      const parsedDate = new Date(order.created_at);
+
+      date.textContent =
+        "التاريخ: " +
+        (
+          Number.isNaN(parsedDate.getTime())
+            ? "غير متاح"
+            : parsedDate.toLocaleString("ar-DZ")
+        );
+
+      const status = document.createElement("div");
+      status.className = "tag";
+      status.textContent =
+        "الحالة: " + orderStatusLabel(order.status);
+
+      info.append(
+        title,
+        email,
+        price,
+        date,
+        status
+      );
+
+      card.appendChild(info);
+      list.appendChild(card);
+    });
+
+  } catch (err) {
+    console.error("Load orders error:", err);
+
     list.textContent =
-      "تعذر تحميل الطلبات: " + error.message;
+      "تعذر تحميل الطلبات: " + err.message;
 
     summary.textContent =
       "تعذر تحميل الإحصائيات.";
-
-    return;
   }
-
-  const orders = data || [];
-
-  const pending = orders.filter(
-    (o) => o.status === "pending"
-  ).length;
-
-  const paid = orders.filter(
-    (o) => o.status === "paid"
-  ).length;
-
-  const failed = orders.filter(
-    (o) => o.status === "failed"
-  ).length;
-
-  const refunded = orders.filter(
-    (o) => o.status === "refunded"
-  ).length;
-
-  summary.textContent =
-    `إجمالي الطلبات: ${orders.length} — ` +
-    `قيد الانتظار: ${pending} — ` +
-    `مدفوع: ${paid} — ` +
-    `فشل: ${failed} — ` +
-    `مسترد: ${refunded}`;
-
-  list.replaceChildren();
-
-  if (!orders.length) {
-    list.textContent = "لا توجد طلبات حتى الآن.";
-    return;
-  }
-
-  orders.forEach((order) => {
-    const card = document.createElement("article");
-    card.className = "product";
-
-    const info = document.createElement("div");
-
-    const title = document.createElement("strong");
-    title.textContent =
-      order.product_title || "منتج PIXORA";
-
-    const email = document.createElement("div");
-    email.className = "muted";
-    email.textContent =
-      "البريد الإلكتروني: " + order.customer_email;
-
-    const price = document.createElement("div");
-    price.className = "muted";
-    price.textContent =
-      "المبلغ: " + order.amount + " " + order.currency;
-
-    const date = document.createElement("div");
-    date.className = "muted";
-
-    const parsedDate = new Date(order.created_at);
-
-    date.textContent =
-      "التاريخ: " +
-      (
-        Number.isNaN(parsedDate.getTime())
-          ? "غير متاح"
-          : parsedDate.toLocaleString("ar-DZ")
-      );
-
-    const status = document.createElement("div");
-    status.className = "tag";
-    status.textContent =
-      "الحالة: " + orderStatusLabel(order.status);
-
-    info.append(
-      title,
-      email,
-      price,
-      date,
-      status
-    );
-
-    card.appendChild(info);
-    list.appendChild(card);
-  });
 }
 
 
-/* REFRESH ORDERS BUTTON */
+/* =====================================================
+   REFRESH ORDERS
+===================================================== */
 
 const refreshOrdersBtn = $("refreshOrdersBtn");
 
@@ -612,32 +709,33 @@ if (refreshOrdersBtn) {
 }
 
 
-/* =========================
+/* =====================================================
    RESTORE SESSION
-========================= */
+===================================================== */
 
-(async function init() {
-  const { data, error } = await db.auth.getSession();
+async function init() {
+  try {
+    const { data, error } = await db.auth.getSession();
 
-  if (error) {
-    return message($("loginMsg"), error.message, true);
-  }
+    if (error) throw error;
 
-  if (data.session?.user) {
-    try {
+    if (data.session && data.session.user) {
       await showDashboard(data.session.user);
-    } catch (err) {
-      await db.auth.signOut();
+    } else {
       showLogin();
-
-      message(
-        $("loginMsg"),
-        err.message,
-        true
-      );
     }
-  } else {
-    showLogin();
-  }
-})();
 
+  } catch (err) {
+    console.error("PIXORA initialization error:", err);
+
+    showLogin();
+
+    message(
+      $("loginMsg"),
+      "تعذر تهيئة لوحة الإدارة: " + err.message,
+      true
+    );
+  }
+}
+
+init();
