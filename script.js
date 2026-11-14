@@ -68,18 +68,10 @@ function applyTypography() {
   document.documentElement.lang = language;
   document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
 
-  document.body.style.setProperty(
-    "font-family",
-    font,
-    "important"
-  );
+  document.body.style.setProperty("font-family", font, "important");
 
   document.querySelectorAll("body *").forEach(element => {
-    element.style.setProperty(
-      "font-family",
-      font,
-      "important"
-    );
+    element.style.setProperty("font-family", font, "important");
   });
 
   if (document.fonts && document.fonts.load) {
@@ -101,8 +93,10 @@ function setLanguage(next) {
   document.documentElement.lang = language;
   document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
 
-  langButton.textContent =
-    language === "ar" ? "English" : "العربية";
+  if (langButton) {
+    langButton.textContent =
+      language === "ar" ? "English" : "العربية";
+  }
 
   document.querySelectorAll("[data-en][data-ar]").forEach(el => {
     const translatedText = el.dataset[language];
@@ -114,7 +108,7 @@ function setLanguage(next) {
 
   renderProducts();
 
-  if (activeProduct && dialog.open) {
+  if (activeProduct && dialog?.open) {
     showDetails(activeProduct);
   }
 
@@ -135,9 +129,11 @@ function setLanguage(next) {
   applyTypography();
 }
 
-langButton.addEventListener("click", () => {
-  setLanguage(language === "en" ? "ar" : "en");
-});
+if (langButton) {
+  langButton.addEventListener("click", () => {
+    setLanguage(language === "en" ? "ar" : "en");
+  });
+}
 
 /* =========================================
    ELEMENT HELPER
@@ -181,85 +177,123 @@ function formatPrice(product) {
 ========================================= */
 
 function showProductImage(product) {
-  if (!dialogImage || !detailPlaceholder) return;
+  const imageElement = document.querySelector("#dialog-image");
+  const placeholder = document.querySelector("#detail-placeholder");
 
-  // Reset the image before loading another product.
-  dialogImage.onload = null;
-  dialogImage.onerror = null;
-  dialogImage.removeAttribute("src");
-  dialogImage.style.display = "none";
+  if (!imageElement) return;
 
-  detailPlaceholder.style.display = "flex";
+  imageElement.onload = null;
+  imageElement.onerror = null;
 
-  if (!product.image_path) return;
+  imageElement.removeAttribute("src");
+  imageElement.style.display = "none";
 
-  const imageUrl = db.storage
+  if (placeholder) {
+    placeholder.style.display = "flex";
+  }
+
+  if (!product || !product.image_path) return;
+
+  const { data, error } = db.storage
     .from("pixora-images")
-    .getPublicUrl(product.image_path).data.publicUrl;
+    .getPublicUrl(product.image_path);
 
-  if (!imageUrl) return;
+  if (error || !data?.publicUrl) {
+    console.error("PIXORA image URL error:", error);
+    return;
+  }
 
-  dialogImage.onload = () => {
-    dialogImage.style.display = "block";
-    detailPlaceholder.style.display = "none";
-  };
+  const imageUrl = data.publicUrl;
 
-  dialogImage.onerror = () => {
-    dialogImage.style.display = "none";
-    detailPlaceholder.style.display = "flex";
-  };
-
-  dialogImage.alt =
+  imageElement.alt =
     language === "ar"
       ? (product.title_ar || product.title_en || "صورة المنتج")
       : (product.title_en || product.title_ar || "Product image");
 
-  dialogImage.src = imageUrl;
+  imageElement.onload = () => {
+    imageElement.style.display = "block";
+
+    if (placeholder) {
+      placeholder.style.display = "none";
+    }
+  };
+
+  imageElement.onerror = () => {
+    imageElement.style.display = "none";
+
+    if (placeholder) {
+      placeholder.style.display = "flex";
+    }
+
+    console.error("PIXORA: Unable to load product image.");
+  };
+
+  imageElement.src = imageUrl;
 }
 
 /* =========================================
-   PRODUCT DETAILS WINDOW
+   PRODUCT DETAILS WINDOW — FIXED
 ========================================= */
 
 function showDetails(product) {
+  if (!product) return;
+
   activeProduct = product;
 
-  // Product title.
-  dialogTitle.textContent =
-    language === "ar"
-      ? (product.title_ar || product.title_en || "")
-      : (product.title_en || product.title_ar || "");
+  const titleElement = document.querySelector("#dialog-title");
+  const textElement = document.querySelector("#dialog-text");
+  const categoryElement = document.querySelector("#dialog-category");
+  const priceElement = document.querySelector("#dialog-price");
 
-  // Product description.
-  dialogText.textContent =
-    language === "ar"
-      ? (product.description_ar || product.description_en || "")
-      : (product.description_en || product.description_ar || "");
+  // Product title
+  if (titleElement) {
+    titleElement.textContent =
+      language === "ar"
+        ? (product.title_ar || product.title_en || "")
+        : (product.title_en || product.title_ar || "");
+  }
 
-  // Product category.
-  dialogCategory.textContent =
-    categories[product.category]?.[language] ||
-    (language === "ar" ? "منتج رقمي" : "Digital product");
+  // Product description
+  if (textElement) {
+    textElement.textContent =
+      language === "ar"
+        ? (product.description_ar || product.description_en || "")
+        : (product.description_en || product.description_ar || "");
+  }
 
-  // Product price.
-  dialogPrice.textContent = formatPrice(product);
+  // Product category
+  if (categoryElement) {
+    categoryElement.textContent =
+      categories[product.category]?.[language] ||
+      (language === "ar" ? "منتج رقمي" : "Digital product");
+  }
 
-  // Product image or placeholder.
+  // Product price — update the actual DOM element
+  if (priceElement) {
+    priceElement.textContent = formatPrice(product);
+    priceElement.style.display = "inline-block";
+    priceElement.style.visibility = "visible";
+  }
+
+  // Product image
   showProductImage(product);
 
-  // Reset order form.
-  emailInput.value = "";
-  orderStatus.textContent = "";
-  buyButton.disabled = false;
+  // Reset order form
+  if (emailInput) emailInput.value = "";
 
-  buyButton.textContent =
-    language === "ar"
-      ? "إنشاء طلب الشراء"
-      : "Create order";
+  if (orderStatus) orderStatus.textContent = "";
+
+  if (buyButton) {
+    buyButton.disabled = false;
+    buyButton.textContent =
+      language === "ar"
+        ? "إنشاء طلب الشراء"
+        : "Create order";
+  }
 
   applyTypography();
 
-  if (!dialog.open) {
+  if (dialog && !dialog.open) {
     dialog.showModal();
   }
 }
@@ -269,6 +303,8 @@ function showDetails(product) {
 ========================================= */
 
 function renderProducts() {
+  if (!grid) return;
+
   grid.replaceChildren();
 
   products.forEach(product => {
@@ -376,6 +412,8 @@ function renderProducts() {
 ========================================= */
 
 function applyFilter() {
+  if (!grid) return;
+
   grid.querySelectorAll(".product").forEach(card => {
     card.hidden =
       activeFilter !== "all" &&
@@ -402,10 +440,12 @@ document.querySelectorAll(".filters button").forEach(button => {
 ========================================= */
 
 async function loadProducts() {
-  status.textContent =
-    language === "ar"
-      ? "جارٍ تحميل المنتجات..."
-      : "Loading products...";
+  if (status) {
+    status.textContent =
+      language === "ar"
+        ? "جارٍ تحميل المنتجات..."
+        : "Loading products...";
+  }
 
   try {
     const { data, error } = await db
@@ -422,25 +462,29 @@ async function loadProducts() {
 
     renderProducts();
 
-    status.textContent = products.length
-      ? (
-          language === "ar"
-            ? "المنتجات المنشورة والمتاحة حاليًا."
-            : "Published products available now."
-        )
-      : (
-          language === "ar"
-            ? "لا توجد منتجات منشورة حاليًا."
-            : "No published products yet."
-        );
+    if (status) {
+      status.textContent = products.length
+        ? (
+            language === "ar"
+              ? "المنتجات المنشورة والمتاحة حاليًا."
+              : "Published products available now."
+          )
+        : (
+            language === "ar"
+              ? "لا توجد منتجات منشورة حاليًا."
+              : "No published products yet."
+          );
+    }
 
   } catch (error) {
     console.error("PIXORA error:", error);
 
-    status.textContent =
-      language === "ar"
-        ? "تعذر تحميل المنتجات. يرجى تحديث الصفحة."
-        : "Unable to load products. Please refresh the page.";
+    if (status) {
+      status.textContent =
+        language === "ar"
+          ? "تعذر تحميل المنتجات. يرجى تحديث الصفحة."
+          : "Unable to load products. Please refresh the page.";
+    }
   }
 }
 
@@ -448,107 +492,128 @@ async function loadProducts() {
    CREATE CUSTOMER ORDER
 ========================================= */
 
-buyButton.addEventListener("click", async () => {
-  if (!activeProduct) return;
+if (buyButton) {
+  buyButton.addEventListener("click", async () => {
+    if (!activeProduct) return;
 
-  const email = emailInput.value.trim();
+    const email = emailInput?.value.trim() || "";
 
-  if (!emailInput.checkValidity() || !email) {
-    emailInput.reportValidity();
+    if (!emailInput || !emailInput.checkValidity() || !email) {
+      emailInput?.reportValidity();
 
-    orderStatus.textContent =
-      language === "ar"
-        ? "يرجى إدخال بريد إلكتروني صحيح."
-        : "Please enter a valid email address.";
-
-    return;
-  }
-
-  buyButton.disabled = true;
-
-  buyButton.textContent =
-    language === "ar"
-      ? "جارٍ إنشاء الطلب..."
-      : "Creating order...";
-
-  orderStatus.textContent =
-    language === "ar"
-      ? "يرجى الانتظار..."
-      : "Please wait...";
-
-  try {
-    const { data, error } = await db.functions.invoke(
-      "create-order",
-      {
-        body: {
-          product_id: activeProduct.id,
-          customer_email: email
-        }
+      if (orderStatus) {
+        orderStatus.textContent =
+          language === "ar"
+            ? "يرجى إدخال بريد إلكتروني صحيح."
+            : "Please enter a valid email address.";
       }
-    );
 
-    if (error) throw error;
+      return;
+    }
 
-    console.log("PIXORA order response:", data);
-
-    orderStatus.textContent =
-      language === "ar"
-        ? "تم إنشاء طلبك بنجاح. الدفع غير مفعّل حاليًا، وسيبقى الطلب في انتظار الدفع."
-        : "Your order was created successfully. Payment is not enabled yet, so your order will remain pending.";
+    buyButton.disabled = true;
 
     buyButton.textContent =
       language === "ar"
-        ? "تم إنشاء الطلب"
-        : "Order created";
+        ? "جارٍ إنشاء الطلب..."
+        : "Creating order...";
 
-  } catch (error) {
-    console.error("PIXORA order error:", error);
+    if (orderStatus) {
+      orderStatus.textContent =
+        language === "ar"
+          ? "يرجى الانتظار..."
+          : "Please wait...";
+    }
 
-    orderStatus.textContent =
-      language === "ar"
-        ? "تعذر إنشاء الطلب. يرجى المحاولة لاحقًا."
-        : "Unable to create the order. Please try again later.";
+    try {
+      const { data, error } = await db.functions.invoke(
+        "create-order",
+        {
+          body: {
+            product_id: activeProduct.id,
+            customer_email: email
+          }
+        }
+      );
 
-    buyButton.disabled = false;
+      if (error) throw error;
 
-    buyButton.textContent =
-      language === "ar"
-        ? "إعادة المحاولة"
-        : "Try again";
-  }
-});
+      console.log("PIXORA order response:", data);
+
+      if (orderStatus) {
+        orderStatus.textContent =
+          language === "ar"
+            ? "تم إنشاء طلبك بنجاح. الدفع غير مفعّل حاليًا، وسيبقى الطلب في انتظار الدفع."
+            : "Your order was created successfully. Payment is not enabled yet, so your order will remain pending.";
+      }
+
+      buyButton.textContent =
+        language === "ar"
+          ? "تم إنشاء الطلب"
+          : "Order created";
+
+    } catch (error) {
+      console.error("PIXORA order error:", error);
+
+      if (orderStatus) {
+        orderStatus.textContent =
+          language === "ar"
+            ? "تعذر إنشاء الطلب. يرجى المحاولة لاحقًا."
+            : "Unable to create the order. Please try again later.";
+      }
+
+      buyButton.disabled = false;
+
+      buyButton.textContent =
+        language === "ar"
+          ? "إعادة المحاولة"
+          : "Try again";
+    }
+  });
+}
 
 /* =========================================
    DIALOG CONTROLS
 ========================================= */
 
-document.querySelector("#close").addEventListener("click", () => {
-  dialog.close();
-});
+const closeButton = document.querySelector("#close");
+const okButton = document.querySelector("#ok");
 
-document.querySelector("#ok").addEventListener("click", () => {
-  dialog.close();
-});
-
-dialog.addEventListener("click", event => {
-  if (event.target === dialog) {
+if (closeButton && dialog) {
+  closeButton.addEventListener("click", () => {
     dialog.close();
-  }
-});
+  });
+}
+
+if (okButton && dialog) {
+  okButton.addEventListener("click", () => {
+    dialog.close();
+  });
+}
+
+if (dialog) {
+  dialog.addEventListener("click", event => {
+    if (event.target === dialog) {
+      dialog.close();
+    }
+  });
+}
 
 /* =========================================
    MOBILE NAVIGATION
 ========================================= */
 
-menuButton.addEventListener("click", () => {
-  nav.classList.toggle("open");
-});
-
-nav.querySelectorAll("a").forEach(link => {
-  link.addEventListener("click", () => {
-    nav.classList.remove("open");
+if (menuButton && nav) {
+  menuButton.addEventListener("click", () => {
+    nav.classList.toggle("open");
   });
-});
+
+  nav.querySelectorAll("a").forEach(link => {
+    link.addEventListener("click", () => {
+      nav.classList.remove("open");
+    });
+  });
+}
 
 /* =========================================
    START PIXORA
