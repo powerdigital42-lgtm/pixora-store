@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <title>PIXORA | لوحة الإدارة</title>
+  <style>
+    :root{color-scheme:dark;--bg:#0b1110;--panel:#121c19;--line:#263a33;--green:#10b981;--muted:#9ca3af;--white:#f9fafb}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--white);font:15px/1.6 system-ui,Tahoma,Arial,sans-serif}
+    .wrap{width:min(1100px,92%);margin:35px auto}.top{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;margin-bottom:25px}
+    h1,h2,h3,p{margin-top:0}.brand{font-weight:900;letter-spacing:.14em;color:var(--green);font-size:1.25rem}.muted{color:var(--muted);font-size:.9rem}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px;margin:18px 0}
+    .hidden{display:none!important}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    label{display:block;font-size:.85rem;font-weight:700;margin-bottom:6px}input,textarea,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:9px;background:#0b1411;color:white;font:inherit}
+    textarea{min-height:90px;resize:vertical}.full{grid-column:1/-1}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}
+    button{border:0;border-radius:9px;padding:10px 16px;background:var(--green);color:#052e24;font-weight:850;cursor:pointer;font:inherit}
+    button.secondary{background:#263a33;color:white}button.danger{background:#7f1d1d;color:white}button:disabled{opacity:.5;cursor:not-allowed}
+    .msg{padding:10px 12px;border-radius:9px;background:#18352b;color:#a7f3d0;margin:12px 0}.msg.error{background:#451a1a;color:#fecaca}
+    .product{border:1px solid var(--line);border-radius:12px;padding:15px;margin-top:12px;display:flex;justify-content:space-between;gap:15px;align-items:center}
+    .product small{color:var(--muted)}.tag{font-size:.75rem;color:#a7f3d0}.product-actions{display:flex;gap:7px;flex-wrap:wrap}
+    @media(max-width:650px){.grid{grid-template-columns:1fr}.product{align-items:flex-start;flex-direction:column}.wrap{margin:20px auto}.panel{padding:16px}}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="admin.js" defer></script>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <div><div class="brand">PIXORA / ADMIN</div><p class="muted">لوحة إدارة المنتجات — لا تشارك رابط هذه الصفحة أو بيانات دخولك.</p></div>
+    <button id="logoutBtn" class="secondary hidden" type="button">تسجيل الخروج</button>
+  </header>
+
+  <section id="loginPanel" class="panel">
+    <h1>تسجيل دخول المسؤول</h1>
+    <p class="muted">استخدم البريد وكلمة المرور اللذين أنشأت بهما حساب Supabase Auth.</p>
+    <form id="loginForm">
+      <div class="grid">
+        <div class="full"><label for="email">البريد الإلكتروني</label><input id="email" type="email" autocomplete="username" required></div>
+        <div class="full"><label for="password">كلمة المرور</label><input id="password" type="password" autocomplete="current-password" required></div>
+      </div>
+      <div class="actions"><button type="submit">دخول</button></div>
+    </form>
+    <div id="loginMsg" aria-live="polite"></div>
+  </section>
+
+  <section id="dashboard" class="hidden">
+    <section class="panel">
+      <h2 id="formTitle">إضافة منتج جديد</h2>
+      <p class="muted">املأ بيانات اللغتين. يمكنك حفظ المنتج كمسودة قبل نشره.</p>
+      <form id="productForm">
+        <input id="productId" type="hidden">
+        <div class="grid">
+          <div><label for="title_en">اسم المنتج بالإنجليزية</label><input id="title_en" required maxlength="180"></div>
+          <div><label for="title_ar">اسم المنتج بالعربية</label><input id="title_ar" required maxlength="180"></div>
+          <div><label for="description_en">الوصف بالإنجليزية</label><textarea id="description_en"></textarea></div>
+          <div><label for="description_ar">الوصف بالعربية</label><textarea id="description_ar"></textarea></div>
+          <div><label for="category">التصنيف</label>
+            <select id="category"><option value="files">ملفات رقمية</option><option value="design">تصميم وقوالب</option><option value="ai">موارد الذكاء الاصطناعي</option></select>
+          </div>
+          <div><label for="price">السعر</label><input id="price" type="number" min="0" step="0.01" value="0" required></div>
+          <div><label for="currency">العملة</label><select id="currency"><option value="USD">USD</option><option value="DZD">DZD</option></select></div>
+          <div><label for="is_published">حالة المنتج</label><select id="is_published"><option value="false">مسودة — مخفي</option><option value="true">منشور — ظاهر</option></select></div>
+          <div><label for="imageFile">صورة الغلاف (PNG/JPG/WebP)</label><input id="imageFile" type="file" accept="image/png,image/jpeg,image/webp"></div>
+          <div><label for="pdfFile">ملف المنتج (PDF)</label><input id="pdfFile" type="file" accept="application/pdf"></div>
+          <div class="full muted" id="fileStatus">عند تعديل منتج، اترك اختيار الملف فارغًا للاحتفاظ بالملفات الحالية.</div>
+        </div>
+        <div class="actions">
+          <button id="saveBtn" type="submit">حفظ المنتج</button>
+          <button id="cancelEditBtn" class="secondary" type="button">إلغاء التعديل</button>
+        </div>
+      </form>
+      <div id="formMsg" aria-live="polite"></div>
+    </section>
+
+    <section class="panel">
+      <h2>المنتجات الحالية</h2>
+      <p class="muted">هذه القائمة تعرض المنتجات المسجلة في قاعدة البيانات، سواء كانت منشورة أو مسودات.</p>
+      <div id="productsList">جارٍ تحميل المنتجات...</div>
+    </section>
+  </section>
+</main>
+</body>
+</html>
