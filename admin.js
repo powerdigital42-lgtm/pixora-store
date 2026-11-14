@@ -31,7 +31,10 @@ async function showDashboard(user) {
   loginPanel.classList.add("hidden");
   dashboard.classList.remove("hidden");
   logoutBtn.classList.remove("hidden");
+
   await loadProducts();
+  await loadOrders();
+}
 }
 function showLogin() {
   currentUser = null;
