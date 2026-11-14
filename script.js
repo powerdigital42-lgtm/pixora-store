@@ -31,6 +31,8 @@ const categories = {
   ai: { en: "AI resources", ar: "موارد الذكاء الاصطناعي" }
 };
 
+/* Language switching */
+
 function setLanguage(next) {
   language = next;
 
@@ -40,15 +42,39 @@ function setLanguage(next) {
   langButton.textContent = next === "ar" ? "English" : "العربية";
 
   document.querySelectorAll("[data-en][data-ar]").forEach(el => {
-    el.textContent = el.dataset[next];
+    const translatedText = el.dataset[next];
+
+    if (translatedText !== undefined) {
+      el.innerHTML = translatedText;
+    }
   });
 
   renderProducts();
+
+  if (activeProduct && dialog.open) {
+    showDetails(activeProduct);
+  }
+
+  if (status) {
+    status.textContent = products.length
+      ? (
+          language === "ar"
+            ? "المنتجات المنشورة والمتاحة حاليًا."
+            : "Published products available now."
+        )
+      : (
+          language === "ar"
+            ? "لا توجد منتجات منشورة حاليًا."
+            : "No published products yet."
+        );
+  }
 }
 
 langButton.addEventListener("click", () => {
   setLanguage(language === "en" ? "ar" : "en");
 });
+
+/* Element helper */
 
 function makeElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -58,6 +84,8 @@ function makeElement(tag, className, text) {
 
   return el;
 }
+
+/* Price formatting */
 
 function formatPrice(product) {
   const amount = Number(product.price);
@@ -76,6 +104,8 @@ function formatPrice(product) {
     return amount + " " + (product.currency || "");
   }
 }
+
+/* Product details */
 
 function showDetails(product) {
   activeProduct = product;
@@ -99,6 +129,8 @@ function showDetails(product) {
 
   dialog.showModal();
 }
+
+/* Render products */
 
 function renderProducts() {
   grid.replaceChildren();
@@ -198,6 +230,8 @@ function renderProducts() {
   applyFilter();
 }
 
+/* Product filters */
+
 function applyFilter() {
   grid.querySelectorAll(".product").forEach(card => {
     card.hidden =
@@ -218,6 +252,8 @@ document.querySelectorAll(".filters button").forEach(button => {
     applyFilter();
   });
 });
+
+/* Load products from Supabase */
 
 async function loadProducts() {
   status.textContent =
