@@ -8,8 +8,19 @@
   <meta name="description" content="PIXORA — YOUR DIGITAL WORLD. Discover digital templates, AI resources, and useful downloadable products.">
   <title>PIXORA — YOUR DIGITAL WORLD</title>
 
+  <!-- PIXORA PREMIUM FONTS -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  >
+
+  <!-- PIXORA STYLES -->
   <link rel="stylesheet" href="style.css">
 
+  <!-- SUPABASE -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js" defer></script>
 </head>
@@ -30,8 +41,13 @@
 
   <div class="actions">
     <button id="lang" class="lang" type="button">العربية</button>
-    <a class="small-cta" href="#products" data-en="Explore" data-ar="استكشف">Explore</a>
-    <button id="menu" class="menu" type="button" aria-label="Open menu">☰</button>
+
+    <a class="small-cta" href="#products"
+      data-en="Explore" data-ar="استكشف">
+      Explore
+    </a>
+
+    <button class="menu" id="menu" type="button" aria-label="Open menu">☰</button>
   </div>
 </header>
 
@@ -48,8 +64,8 @@
       </p>
 
       <h1
-        data-en="Digital tools for your next big idea."
-        data-ar="أدوات رقمية من أجل فكرتك القادمة.">
+        data-en="Digital tools for <em>your next big idea.</em>"
+        data-ar="أدوات رقمية من أجل <em>فكرتك القادمة.</em>">
         Digital tools for <em>your next big idea.</em>
       </h1>
 
@@ -295,8 +311,8 @@
         <p class="eyebrow" data-en="WHY PIXORA" data-ar="لماذا PIXORA؟">WHY PIXORA</p>
 
         <h2
-          data-en="Useful digital goods. Thoughtfully presented."
-          data-ar="منتجات رقمية مفيدة. معروضة بعناية.">
+          data-en="Useful digital goods. <em>Thoughtfully presented.</em>"
+          data-ar="منتجات رقمية مفيدة. <em>معروضة بعناية.</em>">
           Useful digital goods.<br>
           <em>Thoughtfully presented.</em>
         </h2>
@@ -429,6 +445,11 @@
   </button>
 
 </dialog>
+
+<!-- FOOTER YEAR -->
+<script>
+  document.querySelector("#year").textContent = new Date().getFullYear();
+</script>
 
 </body>
 </html>
