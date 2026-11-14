@@ -20,7 +20,7 @@ const emailInput = document.querySelector("#customer-email");
 const buyButton = document.querySelector("#buy");
 const orderStatus = document.querySelector("#order-status");
 
-let language = "en";
+let language = document.documentElement.lang === "ar" ? "ar" : "en";
 let products = [];
 let activeFilter = "all";
 let activeProduct = null;
@@ -31,18 +31,55 @@ const categories = {
   ai: { en: "AI resources", ar: "موارد الذكاء الاصطناعي" }
 };
 
-/* Language switching */
+/* =========================================
+   TYPOGRAPHY — FORCE CORRECT FONT
+========================================= */
+
+function applyTypography() {
+  const font = language === "ar"
+    ? '"Cairo", Tahoma, Arial, sans-serif'
+    : '"Inter", system-ui, -apple-system, "Segoe UI", sans-serif';
+
+  document.documentElement.lang = language;
+  document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
+
+  document.body.style.setProperty(
+    "font-family",
+    font,
+    "important"
+  );
+
+  document.querySelectorAll("body *").forEach(element => {
+    element.style.setProperty(
+      "font-family",
+      font,
+      "important"
+    );
+  });
+
+  // Load the selected Google Font when available.
+  if (document.fonts && document.fonts.load) {
+    document.fonts.load(
+      language === "ar" ? '400 16px "Cairo"' : '400 16px "Inter"'
+    ).catch(() => {});
+  }
+}
+
+/* =========================================
+   LANGUAGE SWITCHING
+========================================= */
 
 function setLanguage(next) {
-  language = next;
+  language = next === "ar" ? "ar" : "en";
 
-  document.documentElement.lang = next;
-  document.documentElement.dir = next === "ar" ? "rtl" : "ltr";
+  document.documentElement.lang = language;
+  document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
 
-  langButton.textContent = next === "ar" ? "English" : "العربية";
+  langButton.textContent =
+    language === "ar" ? "English" : "العربية";
 
   document.querySelectorAll("[data-en][data-ar]").forEach(el => {
-    const translatedText = el.dataset[next];
+    const translatedText = el.dataset[language];
 
     if (translatedText !== undefined) {
       el.innerHTML = translatedText;
@@ -68,13 +105,18 @@ function setLanguage(next) {
             : "No published products yet."
         );
   }
+
+  // Apply the font after changing all translated content.
+  applyTypography();
 }
 
 langButton.addEventListener("click", () => {
   setLanguage(language === "en" ? "ar" : "en");
 });
 
-/* Element helper */
+/* =========================================
+   ELEMENT HELPER
+========================================= */
 
 function makeElement(tag, className, text) {
   const el = document.createElement(tag);
@@ -85,7 +127,9 @@ function makeElement(tag, className, text) {
   return el;
 }
 
-/* Price formatting */
+/* =========================================
+   PRICE FORMATTING
+========================================= */
 
 function formatPrice(product) {
   const amount = Number(product.price);
@@ -105,7 +149,9 @@ function formatPrice(product) {
   }
 }
 
-/* Product details */
+/* =========================================
+   PRODUCT DETAILS
+========================================= */
 
 function showDetails(product) {
   activeProduct = product;
@@ -127,10 +173,16 @@ function showDetails(product) {
   buyButton.textContent =
     language === "ar" ? "إنشاء طلب الشراء" : "Create order";
 
-  dialog.showModal();
+  applyTypography();
+
+  if (!dialog.open) {
+    dialog.showModal();
+  }
 }
 
-/* Render products */
+/* =========================================
+   RENDER PRODUCTS
+========================================= */
 
 function renderProducts() {
   grid.replaceChildren();
@@ -228,9 +280,14 @@ function renderProducts() {
   });
 
   applyFilter();
+
+  // Important: apply the font to newly created product cards.
+  applyTypography();
 }
 
-/* Product filters */
+/* =========================================
+   PRODUCT FILTERS
+========================================= */
 
 function applyFilter() {
   grid.querySelectorAll(".product").forEach(card => {
@@ -253,7 +310,9 @@ document.querySelectorAll(".filters button").forEach(button => {
   });
 });
 
-/* Load products from Supabase */
+/* =========================================
+   LOAD PRODUCTS FROM SUPABASE
+========================================= */
 
 async function loadProducts() {
   status.textContent =
@@ -295,7 +354,9 @@ async function loadProducts() {
   }
 }
 
-/* Create customer order */
+/* =========================================
+   CREATE CUSTOMER ORDER
+========================================= */
 
 buyButton.addEventListener("click", async () => {
   if (!activeProduct) return;
@@ -361,7 +422,9 @@ buyButton.addEventListener("click", async () => {
   }
 });
 
-/* Dialog controls */
+/* =========================================
+   DIALOG CONTROLS
+========================================= */
 
 document.querySelector("#close").addEventListener("click", () => {
   dialog.close();
@@ -375,7 +438,9 @@ dialog.addEventListener("click", event => {
   if (event.target === dialog) dialog.close();
 });
 
-/* Mobile navigation */
+/* =========================================
+   MOBILE NAVIGATION
+========================================= */
 
 menuButton.addEventListener("click", () => {
   nav.classList.toggle("open");
@@ -387,6 +452,12 @@ nav.querySelectorAll("a").forEach(link => {
   });
 });
 
-/* Start */
+/* =========================================
+   START PIXORA
+========================================= */
 
+// Synchronize the page language and font on first load.
+setLanguage(language);
+
+// Load published products.
 loadProducts();
