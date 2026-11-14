@@ -2,6 +2,7 @@
 /* =========================================
    PIXORA — PREMIUM DIGITAL STORE
    Colors: Charcoal Black / Emerald / White
+   Arabic: Cairo | English: Inter
 ========================================= */
 
 * {
@@ -25,12 +26,82 @@ html {
   scroll-padding-top: 85px;
 }
 
+/* =========================================
+   TYPOGRAPHY SYSTEM
+========================================= */
+
+/* English */
+html[lang="en"] body {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  letter-spacing: 0;
+}
+
+/* Arabic */
+html[lang="ar"] body {
+  font-family: "Cairo", Tahoma, Arial, sans-serif;
+  letter-spacing: 0;
+  line-height: 1.9;
+}
+
+/* Headings — English */
+html[lang="en"] h1,
+html[lang="en"] h2,
+html[lang="en"] h3 {
+  font-family: "Inter", sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+}
+
+/* Headings — Arabic */
+html[lang="ar"] h1,
+html[lang="ar"] h2,
+html[lang="ar"] h3 {
+  font-family: "Cairo", sans-serif;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1.55;
+}
+
+/* Arabic paragraphs */
+html[lang="ar"] p,
+html[lang="ar"] small,
+html[lang="ar"] label {
+  font-family: "Cairo", sans-serif;
+  letter-spacing: 0;
+  line-height: 1.9;
+}
+
+/* English paragraphs */
+html[lang="en"] p,
+html[lang="en"] small,
+html[lang="en"] label {
+  font-family: "Inter", sans-serif;
+}
+
+/* Form controls */
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+html[lang="ar"] button,
+html[lang="ar"] input,
+html[lang="ar"] textarea,
+html[lang="ar"] select {
+  font-family: "Cairo", sans-serif;
+}
+
+/* General */
 body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: "Inter", system-ui, sans-serif;
   line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 a {
@@ -39,7 +110,6 @@ a {
 }
 
 button {
-  font: inherit;
   cursor: pointer;
 }
 
@@ -201,6 +271,11 @@ h1 {
   margin: 0 0 22px;
   font-weight: 900;
   color: white;
+}
+
+html[lang="ar"] h1 {
+  font-size: clamp(2.1rem, 5vw, 3.8rem);
+  line-height: 1.5;
 }
 
 h1 em,
@@ -434,6 +509,12 @@ h1 em,
   color: white;
 }
 
+html[lang="ar"] .section-head h2,
+html[lang="ar"] .support h2 {
+  line-height: 1.6;
+  letter-spacing: 0;
+}
+
 .muted {
   color: var(--muted);
   font-size: .9rem;
@@ -665,6 +746,14 @@ h1 em,
   min-height: 47px;
 }
 
+html[lang="ar"] .pbody h3 {
+  line-height: 1.6;
+}
+
+html[lang="ar"] .pbody p {
+  line-height: 1.9;
+}
+
 .details {
   border: 0;
   background: none;
@@ -743,6 +832,11 @@ h1 em,
   line-height: 1.12;
   letter-spacing: -.06em;
   margin: 0 0 18px;
+}
+
+html[lang="ar"] .about h2 {
+  line-height: 1.6;
+  letter-spacing: 0;
 }
 
 .about-text {
@@ -847,6 +941,11 @@ dialog h2 {
   color: white;
 }
 
+html[lang="ar"] dialog h2 {
+  letter-spacing: 0;
+  line-height: 1.6;
+}
+
 dialog p {
   color: #cbd5d0;
 }
@@ -872,6 +971,15 @@ dialog label {
   font-size: .85rem;
 }
 
+html[lang="ar"] dialog {
+  font-family: "Cairo", sans-serif;
+}
+
+html[lang="ar"] #customer-email {
+  direction: ltr;
+  text-align: left;
+}
+
 .close {
   position: absolute;
   right: 14px;
@@ -884,6 +992,11 @@ dialog label {
 
 .close:hover {
   color: white;
+}
+
+html[dir="rtl"] .close {
+  right: auto;
+  left: 14px;
 }
 
 .dialog-warning {
@@ -901,37 +1014,33 @@ dialog label {
 
 /* RTL SUPPORT */
 
-html[dir=rtl] body {
-  font-family: Tahoma, Arial, sans-serif;
-}
-
-html[dir=rtl] .eyebrow {
+html[dir="rtl"] body {
+  font-family: "Cairo", Tahoma, Arial, sans-serif;
   letter-spacing: 0;
 }
 
-html[dir=rtl] .visual > small {
+html[dir="rtl"] .eyebrow {
+  letter-spacing: 0;
+}
+
+html[dir="rtl"] .visual > small {
   left: auto;
   right: 16px;
 }
 
-html[dir=rtl] .visual > label {
+html[dir="rtl"] .visual > label {
   right: auto;
   left: 16px;
 }
 
-html[dir=rtl] .top {
+html[dir="rtl"] .top {
   right: auto;
   left: 0;
 }
 
-html[dir=rtl] .bottom {
+html[dir="rtl"] .bottom {
   left: auto;
   right: 0;
-}
-
-html[dir=rtl] .close {
-  right: auto;
-  left: 14px;
 }
 
 /* TABLET */
