@@ -73,11 +73,30 @@
       <div id="formMsg" aria-live="polite"></div>
     </section>
 
+   
     <section class="panel">
       <h2>المنتجات الحالية</h2>
       <p class="muted">هذه القائمة تعرض المنتجات المسجلة في قاعدة البيانات، سواء كانت منشورة أو مسودات.</p>
       <div id="productsList">جارٍ تحميل المنتجات...</div>
     </section>
+
+    <section class="panel" id="ordersPanel">
+      <h2>طلبات العملاء</h2>
+      <p class="muted">عرض الطلبات المسجلة في PIXORA ومتابعة حالتها.</p>
+
+      <div class="actions">
+        <button type="button" id="refreshOrdersBtn">تحديث الطلبات</button>
+      </div>
+
+      <div id="ordersSummary" class="muted">
+        جارٍ تحميل إحصائيات الطلبات...
+      </div>
+
+      <div id="ordersList">
+        جارٍ تحميل الطلبات...
+      </div>
+    </section>
+
   </section>
 </main>
 </body>
