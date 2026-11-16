@@ -562,20 +562,172 @@ async function deleteProduct(p) {
 
 
 /* =====================================================
-   CUSTOMER ORDERS
+   CUSTOMER ORDERS - STATUS MANAGEMENT
 ===================================================== */
+
+const ORDER_STATUSES = [
+  "pending",
+  "paid",
+  "completed",
+  "cancelled",
+  "failed",
+  "refunded"
+];
 
 function orderStatusLabel(status) {
   const labels = {
     pending: "قيد الانتظار",
     paid: "مدفوع",
+    completed: "مكتمل",
+    cancelled: "ملغى",
     failed: "فشل الدفع",
     refunded: "مسترد"
   };
 
-  return labels[status] || status;
+  return labels[status] || status || "غير معروف";
 }
 
+
+/* =====================================================
+   UPDATE ORDER STATUS
+===================================================== */
+
+async function updateOrderStatus(order, newStatus, select) {
+  const oldStatus = order.status;
+
+  if (!ORDER_STATUSES.includes(newStatus)) {
+    alert("حالة الطلب المختارة غير صحيحة.");
+    select.value = oldStatus;
+    return;
+  }
+
+  if (newStatus === oldStatus) return;
+
+  if (newStatus === "paid") {
+    const confirmed = confirm(
+      "تنبيه مهم:\n\n" +
+      "هل تؤكد أنك استلمت المبلغ فعليًا من العميل؟\n\n" +
+      "لا تختَر «مدفوع» لمجرد إنشاء الطلب. " +
+      "يجب التأكد من وصول المبلغ أولاً."
+    );
+
+    if (!confirmed) {
+      select.value = oldStatus;
+      return;
+    }
+  }
+
+  if (newStatus === "completed" && oldStatus !== "paid") {
+    const confirmed = confirm(
+      "تنبيه:\n\n" +
+      "هذا الطلب ليس مسجلاً كمدفوع.\n" +
+      "هل تريد وضعه كمكتمل رغم ذلك؟"
+    );
+
+    if (!confirmed) {
+      select.value = oldStatus;
+      return;
+    }
+  }
+
+  if (newStatus === "refunded") {
+    const confirmed = confirm(
+      "هل تؤكد أنك أعدت المبلغ للعميل فعليًا؟"
+    );
+
+    if (!confirmed) {
+      select.value = oldStatus;
+      return;
+    }
+  }
+
+  if (newStatus === "cancelled") {
+    const confirmed = confirm(
+      "هل تريد إلغاء هذا الطلب؟"
+    );
+
+    if (!confirmed) {
+      select.value = oldStatus;
+      return;
+    }
+  }
+
+  select.disabled = true;
+
+  try {
+    const { error } = await db
+      .from("orders")
+      .update({ status: newStatus })
+      .eq("id", order.id);
+
+    if (error) throw error;
+
+    alert(
+      "تم تحديث حالة الطلب إلى: " +
+      orderStatusLabel(newStatus)
+    );
+
+    await loadOrders();
+
+  } catch (err) {
+    console.error("Update order status error:", err);
+
+    alert(
+      "تعذر تحديث حالة الطلب.\n\n" +
+      err.message
+    );
+
+    select.disabled = false;
+    select.value = oldStatus;
+  }
+}
+
+
+/* =====================================================
+   ORDER STATUS SELECT
+===================================================== */
+
+function createOrderStatusControl(order) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "order-status-control";
+
+  const label = document.createElement("label");
+  label.textContent = "تغيير حالة الطلب: ";
+
+  const select = document.createElement("select");
+
+  select.style.marginTop = "8px";
+  select.style.padding = "9px";
+  select.style.borderRadius = "8px";
+  select.style.maxWidth = "100%";
+
+  ORDER_STATUSES.forEach((statusValue) => {
+    const option = document.createElement("option");
+
+    option.value = statusValue;
+    option.textContent = orderStatusLabel(statusValue);
+
+    select.appendChild(option);
+  });
+
+  select.value = ORDER_STATUSES.includes(order.status)
+    ? order.status
+    : "pending";
+
+  select.addEventListener("change", () => {
+    updateOrderStatus(order, select.value, select);
+  });
+
+  label.appendChild(select);
+  wrapper.appendChild(label);
+
+  return wrapper;
+}
+
+
+/* =====================================================
+   LOAD ORDERS AND STATISTICS
+===================================================== */
 
 async function loadOrders() {
   const list = $("ordersList");
@@ -598,26 +750,22 @@ async function loadOrders() {
 
     const orders = data || [];
 
-    const pending = orders.filter(
-      (o) => o.status === "pending"
-    ).length;
+    const countStatus = (status) =>
+      orders.filter((o) => o.status === status).length;
 
-    const paid = orders.filter(
-      (o) => o.status === "paid"
-    ).length;
-
-    const failed = orders.filter(
-      (o) => o.status === "failed"
-    ).length;
-
-    const refunded = orders.filter(
-      (o) => o.status === "refunded"
-    ).length;
+    const pending = countStatus("pending");
+    const paid = countStatus("paid");
+    const completed = countStatus("completed");
+    const cancelled = countStatus("cancelled");
+    const failed = countStatus("failed");
+    const refunded = countStatus("refunded");
 
     summary.textContent =
       `إجمالي الطلبات: ${orders.length} — ` +
       `قيد الانتظار: ${pending} — ` +
       `مدفوع: ${paid} — ` +
+      `مكتمل: ${completed} — ` +
+      `ملغى: ${cancelled} — ` +
       `فشل: ${failed} — ` +
       `مسترد: ${refunded}`;
 
@@ -641,7 +789,7 @@ async function loadOrders() {
       const email = document.createElement("div");
       email.className = "muted";
       email.textContent =
-        "البريد الإلكتروني: " + order.customer_email;
+        "البريد الإلكتروني: " + (order.customer_email || "غير متاح");
 
       const price = document.createElement("div");
       price.className = "muted";
@@ -664,14 +812,17 @@ async function loadOrders() {
       const status = document.createElement("div");
       status.className = "tag";
       status.textContent =
-        "الحالة: " + orderStatusLabel(order.status);
+        "الحالة الحالية: " + orderStatusLabel(order.status);
+
+      const statusControl = createOrderStatusControl(order);
 
       info.append(
         title,
         email,
         price,
         date,
-        status
+        status,
+        statusControl
       );
 
       card.appendChild(info);
